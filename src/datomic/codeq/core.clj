@@ -261,38 +261,6 @@
   (or (-> conn d/db (d/entid :tx/commit))
       @(d/transact conn schema)))
 
-;;example commit - git cat-file -p
-;;tree d81cd432f2050c84a3d742caa35ccb8298d51e9d
-;;author Rich Hickey <richhickey@gmail.com> 1348842448 -0400
-;;committer Rich Hickey <richhickey@gmail.com> 1348842448 -0400
-
-;; or
-
-;;tree ba63180c1d120b469b275aef5da479ab6c3e2afd
-;;parent c3bd979cfe65da35253b25cb62aad4271430405c
-;;maybe more parents
-;;author Rich Hickey <richhickey@gmail.com> 1348869325 -0400
-;;committer Rich Hickey <richhickey@gmail.com> 1348869325 -0400
-;;then blank line
-;;then commit message
-
-
-;;example tree
-;;100644 blob ee508f768d92ba23e66c4badedd46aa216963ee1	.gitignore
-;;100644 blob b60ea231eb47eb98395237df17550dee9b38fb72	README.md
-;;040000 tree bcfca612efa4ff65b3eb07f6889ebf73afb0e288	doc
-;;100644 blob 813c07d8cd27226ddd146ddd1d27fdbde10071eb	epl-v10.html
-;;100644 blob f8b5a769bcc74ee35b9a8becbbe49d4904ab8abe	project.clj
-;;040000 tree 6b880666740300ac57361d5aee1a90488ba1305c	src
-;;040000 tree 407924e4812c72c880b011b5a1e0b9cb4eb68cfa	test
-
-;; example git remote origin
-;;RichMacPro:codeq rich$ git remote show -n origin
-;;* remote origin
-;;  Fetch URL: https://github.com/Datomic/codeq.git
-;;  Push  URL: https://github.com/Datomic/codeq.git
-;;  HEAD branch: (not queried)
-
 (defn get-repo-uri
   "returns [uri name]"
   []
@@ -345,8 +313,6 @@
      :authored (dt (author 1))
      :committer (trim-email (committer 2))
      :committed (dt (committer 1))}))
-
-
 
 (defn commit-tx-data
   [db repo repo-name {:keys [sha msg tree parents author authored committer committed] :as commit}]
@@ -539,46 +505,3 @@
   (apply main args)
   (shutdown-agents)
   (System/exit 0))
-
-
-(comment
-(def uri "datomic:mem://git")
-;;(def uri "datomic:free://localhost:4334/git")
-(datomic.codeq.core/main uri "c3bd979cfe65da35253b25cb62aad4271430405c")
-(datomic.codeq.core/main uri  "20f8db11804afc8c5a1752257d5fdfcc2d131d08")
-(datomic.codeq.core/main uri)
-(require '[datomic.api :as d])
-(def conn (d/connect uri))
-(def db (d/db conn))
-(seq (d/datoms db :aevt :file/name))
-(seq (d/datoms db :aevt :commit/message))
-(seq (d/datoms db :aevt :tx/file))
-(count (seq (d/datoms db :aevt :code/sha)))
-(take 20 (seq (d/datoms db :aevt :code/text)))
-(seq (d/datoms db :aevt :code/name))
-(count (seq (d/datoms db :aevt :codeq/code)))
-(d/q '[:find ?e :where [?f :file/name "core.clj"] [?n :node/filename ?f] [?n :node/object ?e]] db)
-(d/q '[:find ?m :where [_ :commit/message ?m] [(.contains ^String ?m "\n")]] db)
-(d/q '[:find ?m :where [_ :code/text ?m] [(.contains ^String ?m "(ns ")]] db)
-(sort (d/q '[:find ?var ?def :where [?cn :code/name ?var] [?cq :clj/def ?cn] [?cq :codeq/code ?def]] db))
-(sort (d/q '[:find ?var ?def :where [?cn :code/name ?var] [?cq :clj/ns ?cn] [?cq :codeq/code ?def]] db))
-(sort (d/q '[:find ?var ?def ?n :where
-             [?cn :code/name ?var]
-             [?cq :clj/ns ?cn]
-             [?cq :codeq/file ?f]
-             [?n :node/object ?f]
-             [?cq :codeq/code ?def]] db))
-(def x "(doseq [f (clojure.set/difference cfiles afiles)]
-          ;;analyze them
-          (println \"analyzing file:\" f)
-          (let [db (d/db conn)
-                s (with-open [s (exec-stream (str \"git cat-file -p \" (:git/sha (d/entity db f))))]
-                    (slurp s))
-                adata (az/analyze a db s)]
-            (d/transact conn
-                        (conj adata {:db/id (d/tempid :db.part/tx)
-                                     :tx/op :analyze
-                                     :codeq/file f
-                                     :tx/analyzer aname
-                                     :tx/analyzerRev arev}))))")
-)
